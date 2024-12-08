@@ -1,0 +1,4 @@
+#一下文件夹数据是缓存到服务器上加速网站的，不同步到github仓库
+hanziData/
+hanziDataGithub/
+images/
