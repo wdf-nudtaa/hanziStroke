@@ -155,41 +155,87 @@ function loadChineseVoice() {
 }
 
 /**
- * 朗读汉字
+ * 使用百度语音API朗读
+ * @param {string} text - 要朗读的文字
+ */
+function speakWithBaidu(text) {
+    try {
+        console.log('使用百度语音API朗读：', text);
+        
+        // 百度免费语音合成接口
+        // spd: 语速 1-9，3是正常速度
+        // lan: 语言，zh表示中文
+        const baiduTTSUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(text)}&spd=4&source=web`;
+        
+        // 创建 Audio 对象播放
+        const audio = new Audio(baiduTTSUrl);
+        
+        audio.oncanplay = function() {
+            console.log('百度语音加载完成，开始播放');
+        };
+        
+        audio.onended = function() {
+            console.log('百度语音播放完成');
+        };
+        
+        audio.onerror = function(e) {
+            console.error('百度语音播放错误：', e);
+            console.log('提示：如果百度接口不可用，建议使用 Chrome 或 Edge 浏览器');
+        };
+        
+        audio.play().catch(err => {
+            console.error('播放失败：', err);
+        });
+        
+    } catch (error) {
+        console.error('百度语音调用失败：', error);
+    }
+}
+
+/**
+ * 朗读汉字（智能选择语音方案）
  * @param {string} text - 要朗读的文字
  */
 function speakText(text) {
-    if (!speechSupported || !chineseVoice) {
-        console.log('语音功能不可用');
-        return;
+    // 优先使用浏览器原生 Web Speech API
+    if (speechSupported && chineseVoice) {
+        try {
+            console.log('使用浏览器原生语音API朗读：', text);
+            
+            // 取消当前正在播放的语音
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = chineseVoice;
+            utterance.lang = chineseVoice.lang || 'zh-CN';
+            utterance.rate = 0.9; // 稍微慢一点，更清晰
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            // 添加错误处理
+            utterance.onerror = function(event) {
+                console.error('语音合成错误：', event.error);
+                console.log('切换到百度语音API');
+                speakWithBaidu(text);
+            };
+
+            utterance.onend = function() {
+                console.log('语音播放完成');
+            };
+
+            window.speechSynthesis.speak(utterance);
+            return;
+        } catch (error) {
+            console.error('浏览器原生语音朗读失败：', error);
+            console.log('切换到百度语音API');
+        }
     }
-
-    try {
-        // 取消当前正在播放的语音
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = chineseVoice;
-        utterance.lang = chineseVoice.lang || 'zh-CN';
-        utterance.rate = 0.9; // 稍微慢一点，更清晰
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        // 添加错误处理
-        utterance.onerror = function(event) {
-            console.error('语音合成错误：', event.error);
-        };
-
-        utterance.onend = function() {
-            console.log('语音播放完成');
-        };
-
-        window.speechSynthesis.speak(utterance);
-        console.log('正在朗读：', text);
-    } catch (error) {
-        console.error('朗读时发生错误：', error);
-    }
+    
+    // 如果浏览器不支持或出错，使用百度语音API
+    console.log('浏览器不支持 Web Speech API，使用百度语音API');
+    speakWithBaidu(text);
 }
+
 
 // 等待页面DOM结构加载完成后再执行后续代码
 document.addEventListener('DOMContentLoaded', () => {
