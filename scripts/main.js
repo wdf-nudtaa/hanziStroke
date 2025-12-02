@@ -155,69 +155,67 @@ function loadChineseVoice() {
 }
 
 /**
- * 使用第三方语音API朗读（尝试多个备选方案）
+ * 使用本地TTS API朗读（通过后端调用百度API）
  * @param {string} text - 要朗读的文字
  */
-function speakWithThirdParty(text) {
+function speakWithLocalAPI(text) {
     try {
-        console.log('使用第三方语音API朗读：', text);
+        console.log('使用本地TTS API朗读：', text);
         
-        // 方案1：使用有道翻译的语音接口（更稳定）
-        const youdaoTTSUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
-        
-        // 创建 Audio 对象播放
-        const audio = new Audio(youdaoTTSUrl);
-        
-        audio.onloadeddata = function() {
-            console.log('语音加载完成，开始播放');
-        };
-        
-        audio.oncanplay = function() {
-            console.log('语音可以播放了');
-        };
-        
-        audio.onended = function() {
-            console.log('语音播放完成');
-        };
-        
-        audio.onerror = function(e) {
-            console.error('语音播放错误：', e);
-            // 如果有道也失败，尝试百度
-            console.log('尝试备用方案：百度语音');
-            tryBaiduTTS(text);
-        };
-        
-        // 尝试播放
-        audio.play().then(() => {
-            console.log('开始播放语音');
-        }).catch(err => {
-            console.error('播放失败：', err);
-            console.log('提示：某些浏览器限制自动播放，尝试使用 Chrome 或 Edge 浏览器');
+        // 使用POST方式调用API，避免URL编码问题
+        fetch('/api/tts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text: text })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建音频URL
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            
+            audio.onloadeddata = function() {
+                console.log('语音加载完成，开始播放');
+            };
+            
+            audio.oncanplay = function() {
+                console.log('语音可以播放了');
+            };
+            
+            audio.onended = function() {
+                console.log('语音播放完成');
+                // 释放URL对象
+                URL.revokeObjectURL(audioUrl);
+            };
+            
+            audio.onerror = function(e) {
+                console.error('本地API语音播放错误：', e);
+                console.log('请检查：1) TTS服务是否运行 2) Nginx配置是否正确');
+                URL.revokeObjectURL(audioUrl);
+            };
+            
+            // 尝试播放
+            audio.play().then(() => {
+                console.log('开始播放语音');
+            }).catch(err => {
+                console.error('播放失败：', err);
+                console.log('提示：某些浏览器限制自动播放，请先点击页面任意位置');
+            });
+        })
+        .catch(error => {
+            console.error('获取语音数据失败：', error);
+            console.log('请检查TTS服务是否正常运行');
         });
         
     } catch (error) {
-        console.error('语音调用失败：', error);
-    }
-}
-
-/**
- * 备用方案：百度语音
- */
-function tryBaiduTTS(text) {
-    try {
-        const baiduTTSUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(text)}&spd=4&source=web`;
-        const audio = new Audio(baiduTTSUrl);
-        
-        audio.oncanplay = function() {
-            console.log('百度备用语音加载成功');
-        };
-        
-        audio.play().catch(err => {
-            console.error('百度备用方案也失败：', err);
-            console.log('建议：请使用 Chrome、Edge 等支持 Web Speech API 的浏览器');
-        });
-    } catch (error) {
-        console.error('百度备用方案错误：', error);
+        console.error('本地API调用失败：', error);
     }
 }
 
@@ -245,10 +243,9 @@ function speakText(text) {
             // 添加错误处理
             utterance.onerror = function(event) {
                 console.error('语音合成错误：', event.error);
-                console.log('切换到第三方语音API');
-                speakWithThirdParty(text);
+                console.log('切换到本地TTS API');
+                speakWithLocalAPI(text);
             };
-
 
             utterance.onend = function() {
                 console.log('语音播放完成');
@@ -258,13 +255,13 @@ function speakText(text) {
             return;
         } catch (error) {
             console.error('浏览器原生语音朗读失败：', error);
-            console.log('切换到第三方语音API');
+            console.log('切换到本地TTS API');
         }
     }
     
-    // 如果浏览器不支持或出错，使用第三方语音API
-    console.log('浏览器不支持 Web Speech API，使用第三方语音API');
-    speakWithThirdParty(text);
+    // 如果浏览器不支持或出错，使用本地TTS API
+    console.log('浏览器不支持 Web Speech API，使用本地TTS API');
+    speakWithLocalAPI(text);
 }
 
 

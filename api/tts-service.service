@@ -1,0 +1,16 @@
+[Unit]
+Description=Hanzi TTS Service
+After=network.target
+
+[Service]
+Type=simple
+User=wangdf
+WorkingDirectory=/var/www/html/hanzi/api
+Environment="BAIDU_API_KEY=LrXxEFCufYhy3xkchgl8hzpZ"
+Environment="BAIDU_SECRET_KEY=pPh420RhZTjVaJ2t38LlpNMBjo20HRRc"
+ExecStart=/usr/bin/python3 /var/www/html/hanzi/api/tts_server.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
