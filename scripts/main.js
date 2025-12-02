@@ -155,42 +155,72 @@ function loadChineseVoice() {
 }
 
 /**
- * 使用百度语音API朗读
+ * 使用第三方语音API朗读（尝试多个备选方案）
  * @param {string} text - 要朗读的文字
  */
-function speakWithBaidu(text) {
+function speakWithThirdParty(text) {
     try {
-        console.log('使用百度语音API朗读：', text);
+        console.log('使用第三方语音API朗读：', text);
         
-        // 百度免费语音合成接口
-        // spd: 语速 1-9，3是正常速度
-        // lan: 语言，zh表示中文
-        const baiduTTSUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(text)}&spd=4&source=web`;
+        // 方案1：使用有道翻译的语音接口（更稳定）
+        const youdaoTTSUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
         
         // 创建 Audio 对象播放
-        const audio = new Audio(baiduTTSUrl);
+        const audio = new Audio(youdaoTTSUrl);
+        
+        audio.onloadeddata = function() {
+            console.log('语音加载完成，开始播放');
+        };
         
         audio.oncanplay = function() {
-            console.log('百度语音加载完成，开始播放');
+            console.log('语音可以播放了');
         };
         
         audio.onended = function() {
-            console.log('百度语音播放完成');
+            console.log('语音播放完成');
         };
         
         audio.onerror = function(e) {
-            console.error('百度语音播放错误：', e);
-            console.log('提示：如果百度接口不可用，建议使用 Chrome 或 Edge 浏览器');
+            console.error('语音播放错误：', e);
+            // 如果有道也失败，尝试百度
+            console.log('尝试备用方案：百度语音');
+            tryBaiduTTS(text);
         };
         
-        audio.play().catch(err => {
+        // 尝试播放
+        audio.play().then(() => {
+            console.log('开始播放语音');
+        }).catch(err => {
             console.error('播放失败：', err);
+            console.log('提示：某些浏览器限制自动播放，尝试使用 Chrome 或 Edge 浏览器');
         });
         
     } catch (error) {
-        console.error('百度语音调用失败：', error);
+        console.error('语音调用失败：', error);
     }
 }
+
+/**
+ * 备用方案：百度语音
+ */
+function tryBaiduTTS(text) {
+    try {
+        const baiduTTSUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(text)}&spd=4&source=web`;
+        const audio = new Audio(baiduTTSUrl);
+        
+        audio.oncanplay = function() {
+            console.log('百度备用语音加载成功');
+        };
+        
+        audio.play().catch(err => {
+            console.error('百度备用方案也失败：', err);
+            console.log('建议：请使用 Chrome、Edge 等支持 Web Speech API 的浏览器');
+        });
+    } catch (error) {
+        console.error('百度备用方案错误：', error);
+    }
+}
+
 
 /**
  * 朗读汉字（智能选择语音方案）
@@ -215,9 +245,10 @@ function speakText(text) {
             // 添加错误处理
             utterance.onerror = function(event) {
                 console.error('语音合成错误：', event.error);
-                console.log('切换到百度语音API');
-                speakWithBaidu(text);
+                console.log('切换到第三方语音API');
+                speakWithThirdParty(text);
             };
+
 
             utterance.onend = function() {
                 console.log('语音播放完成');
@@ -227,14 +258,15 @@ function speakText(text) {
             return;
         } catch (error) {
             console.error('浏览器原生语音朗读失败：', error);
-            console.log('切换到百度语音API');
+            console.log('切换到第三方语音API');
         }
     }
     
-    // 如果浏览器不支持或出错，使用百度语音API
-    console.log('浏览器不支持 Web Speech API，使用百度语音API');
-    speakWithBaidu(text);
+    // 如果浏览器不支持或出错，使用第三方语音API
+    console.log('浏览器不支持 Web Speech API，使用第三方语音API');
+    speakWithThirdParty(text);
 }
+
 
 
 // 等待页面DOM结构加载完成后再执行后续代码
