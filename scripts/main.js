@@ -266,8 +266,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(loadChineseVoice, 100);
         setTimeout(loadChineseVoice, 500);
     } else {
-        console.log('当前浏览器不支持语音合成功能');
+        console.log('当前浏览器不支持 Web Speech API');
+        console.log('将自动使用百度语音API作为替代方案');
+        speechSupported = false;
+        voicesLoaded = false;
     }
+
 
     // 为生成按钮添加点击事件监听器
     createButtons.addEventListener('click', () => {
